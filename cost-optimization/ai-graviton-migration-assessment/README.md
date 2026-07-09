@@ -34,6 +34,12 @@
 - `infrastructure/` - Graviton-optimized CDK/Terraform templates
 - `scripts/` - Testing and validation automation
 
+## Interactive Demo
+
+Experience this demo in an interactive click-through walkthrough:
+
+▶️ [Launch Interactive Demo](https://app.storylane.io/share/fvkujoodtetd)
+
 ## Architecture
 
 ```
@@ -53,13 +59,26 @@ GitHub Repo → CodeBuild (AWS Transform AI) → S3 (Assessment + Artifacts)
 
 ## Quick Start
 
+**Linux/macOS:**
 ```bash
+cd cost-optimization/ai-graviton-migration-assessment
+
 # Analyze your repository
-cd cost-optimization/graviton-migration-assessment
-./assess-graviton.ps1 -RepositoryUrl "https://github.com/owner/repo"
+./assess-graviton.sh -r "https://github.com/owner/repo"
 
 # Or use the default sample (serverless payments app)
-./assess-graviton.ps1
+./assess-graviton.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+cd cost-optimization\ai-graviton-migration-assessment
+
+# Analyze your repository
+.\assess-graviton.ps1 -RepositoryUrl "https://github.com/owner/repo"
+
+# Or use the default sample (serverless payments app)
+.\assess-graviton.ps1
 ```
 
 The script automatically:
@@ -99,8 +118,17 @@ This demo enhances AI analysis by dynamically downloading the latest guidance fr
 
 ## Cleanup
 
+**Linux/macOS:**
 ```bash
 cd infrastructure/cdk
+export PYTHONPATH=$(cd ../../../.. && pwd)
+npx cdk destroy
+```
+
+**Windows (PowerShell):**
+```powershell
+cd infrastructure\cdk
+$env:PYTHONPATH = (Resolve-Path ..\..\..\..)
 npx cdk destroy
 ```
 

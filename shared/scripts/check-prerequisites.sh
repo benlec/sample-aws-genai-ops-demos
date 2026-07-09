@@ -11,6 +11,7 @@ MIN_PYTHON_VERSION=""
 MIN_NODE_VERSION=""
 SKIP_SERVICE_CHECK=false
 REQUIRE_CDK=false
+REQUIRE_KUBECTL=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -36,6 +37,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --require-cdk)
             REQUIRE_CDK=true
+            shift
+            ;;
+        --require-kubectl)
+            REQUIRE_KUBECTL=true
             shift
             ;;
         *)
@@ -73,6 +78,10 @@ fi
 if [ "$REQUIRE_CDK" = true ] || [ -n "$MIN_NODE_VERSION" ]; then
     NODE_MIN=${MIN_NODE_VERSION:-20}
     echo -e "\n\033[0;33mChecking Node.js version...\033[0m"
+    if ! command -v node &> /dev/null; then
+        echo -e "\033[0;31m      ❌ Node.js not found. Install from https://nodejs.org\033[0m"
+        exit 1
+    fi
     NODE_VERSION=$(node --version 2>&1)
     if [[ $NODE_VERSION =~ v([0-9]+) ]]; then
         NODE_MAJOR=${BASH_REMATCH[1]}
@@ -85,6 +94,17 @@ if [ "$REQUIRE_CDK" = true ] || [ -n "$MIN_NODE_VERSION" ]; then
         fi
     else
         echo -e "\033[0;31m      ❌ Node.js not found. Install from https://nodejs.org\033[0m"
+        exit 1
+    fi
+fi
+
+# Check kubectl (if required for EKS demos)
+if [ "$REQUIRE_KUBECTL" = true ]; then
+    echo -e "\n\033[0;33mChecking kubectl...\033[0m"
+    if command -v kubectl &> /dev/null; then
+        echo -e "\033[0;32m      ✓ kubectl installed\033[0m"
+    else
+        echo -e "\033[0;31m      ❌ kubectl not found. Install from https://kubernetes.io/docs/tasks/tools/\033[0m"
         exit 1
     fi
 fi
@@ -143,11 +163,23 @@ fi
 
 # Check AWS region configuration
 echo -e "\n\033[0;33mChecking AWS region configuration...\033[0m"
-CURRENT_REGION=$(aws configure get region)
-if [ -z "$CURRENT_REGION" ]; then
+
+# Source shared region detection utility (env var → CLI config → fallback)
+_PREREQ_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$_PREREQ_SCRIPT_DIR/../utils/aws-utils.sh"
+unset _PREREQ_SCRIPT_DIR
+CURRENT_REGION=$(get_aws_region)
+
+# Reject the us-east-1 fallback — if get_aws_region fell back, the user has no region configured
+# We check by verifying that the region came from an actual source, not the fallback
+REGION_FROM_ENV="${AWS_DEFAULT_REGION:-${AWS_REGION:-}}"
+REGION_FROM_CLI=$(aws configure get region 2>/dev/null || true)
+if [ -z "$REGION_FROM_ENV" ] && [ -z "$REGION_FROM_CLI" ]; then
     echo -e "\033[0;31m      ❌ No AWS region configured\033[0m"
     echo -e ""
-    echo -e "\033[0;33m      Please configure your AWS region using:\033[0m"
+    echo -e "\033[0;33m      Please configure your AWS region using one of:\033[0m"
+    echo -e "\033[0;36m        export AWS_REGION=<your-region>\033[0m"
+    echo -e "\033[0;36m        export AWS_DEFAULT_REGION=<your-region>\033[0m"
     echo -e "\033[0;36m        aws configure set region <your-region>\033[0m"
     echo -e ""
     echo -e "\033[0;90m      For supported regions, see AWS service documentation\033[0m"

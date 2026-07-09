@@ -78,6 +78,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 env.bak/
 venv.bak/
@@ -110,10 +111,17 @@ venv.bak/
 
 # Internal documentation and configuration
 samples/
-docs/
-.kiro/
+# Kiro IDE files (track steering and hooks, ignore working files)
+.kiro/specs/
+.kiro/settings/
 .hypothesis/
-.ash/
+# ASH output is ignored per-project (security/.../ .gitignore keeps ash_output
+# out of git while still allowing the checked-in .ash/.ash.yaml config).
+**/.ash/ash_output/
+**/.ash/ash_output*/
+
+# Reference demo repos (cloned for inspiration, not part of this project)
+**/new_demo_eks_inspiring/
 
 # OS generated files
 .DS_Store

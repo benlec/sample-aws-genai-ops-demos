@@ -6,13 +6,22 @@ This system transforms manual deprecation tracking into an automated, scalable, 
 
 ## 🚀 Key Features
 
-- **🤖 Hybrid AI Extraction**: BeautifulSoup HTML parsing + Amazon Nova Lite AI normalization for reliable data extraction
+- **🔍 Account Resource Discovery**: Automatically scan your AWS account to find actual resources (Lambda, RDS, EKS, ElastiCache, OpenSearch) and show only relevant deprecations
+- **📋 Plan of Action**: Assign deprecations to team members with ownership, priority, target dates, and notes for organized remediation tracking
+- **🤖 Hybrid AI Extraction**: BeautifulSoup HTML parsing +  Amazon Nova 2 Lite AI normalization for reliable data extraction
 - **⚡ Fast Extrant Status Categorization**: Automatically categorizes items as deprecated, extended_support, or end_of_life based on dates
 - **🎛️ Admin Interface**: React-based UI with Cloudscape Design System for service configuration and monitoring
 - **📊 Real-time Dashboard**: Live metrics showing status breakdown (75 deprecated, 19 extended support, 2 end of life)
 - **🔐 Direct AgentCore Integration**: IAM-authenticated AWS SDK calls directly to AgentCore via Cognito Identity Pool (no API Gateway complexity)
 - **⚙️ Service Configuration Management**: Add/modify AWS services via UI or service configuration files
 - **📈 Scalable Architecture**: Serverless design that scales from single services to enterprise-wide monitoring
+
+## Interactive Demo
+
+Experience this demo in an interactive click-through walkthrough:
+
+▶️ [Launch Interactive Demo](https://app.storylane.io/share/jtv9je6phpy4)
+
 
 ## Demo
 
@@ -38,9 +47,9 @@ This system transforms manual deprecation tracking into an automated, scalable, 
                                                       ▼
                         ┌─────────────────────────────────────────────────────────────────┐
                         │                   Runtime Stack                                 │
-                        │  AgentCore Runtime (Hybrid Extraction + Amazon Nova Lite)       │
+                        │  AgentCore Runtime (Hybrid Extraction + Amazon Nova 2 Lite)     │
                         │  ├─ Container: ECR Image (CodeBuild ARM64)                      │
-                        │  ├─ AI Model: Amazon Nova Lite                                  │
+                        │  ├─ AI Model: Amazon Nova 2 Lite                                │
                         │  ├─ Hybrid Approach: BeautifulSoup + LLM normalization          │
                         │  └─ Environment: Table names from Data Stack                    │
                         └─────────────────────────────────────────────────────────────────┘
@@ -50,7 +59,8 @@ This system transforms manual deprecation tracking into an automated, scalable, 
 │ AWS             │<────│                    Data Stack                                   │
 │ Documentation   │     │  DynamoDB Tables:                                               │
 └─────────────────┘     │  ├─ aws-services-lifecycle (deprecation data)                   │
-                        │  └─ service-extraction-config (service settings)                │
+                        │  ├─ service-extraction-config (service settings)                │
+                        │  └─ deprecation-action-plans (remediation tracking)             │
                         └─────────────────────────────────────────────────────────────────┘
 
                         ┌─────────────────────────────────────────────────────────────────┐
@@ -60,7 +70,7 @@ This system transforms manual deprecation tracking into an automated, scalable, 
 
 Simplified Flow:
 1. Admin User ──▶ React UI ──▶ Cognito User Pool ──▶ Identity Pool ──▶ AWS Credentials ──▶ AgentCore (IAM)
-2. AgentCore ──▶ Hybrid Extraction (BeautifulSoup + Amazon Nova Lite) ──▶ DynamoDB
+2. AgentCore ──▶ Hybrid Extraction (BeautifulSoup + Amazon Nova 2 Lite) ──▶ DynamoDB
 3. All operations log to CloudWatch, traced by X-Ray
 ```
 
@@ -73,7 +83,7 @@ Simplified Flow:
 4. **Data Storage**: DynamoDB stores structured deprecation data with intelligent status indexing
 
 **Key Components:**
-- **🤖 Hybrid Data Extraction**: BeautifulSoup HTML parsing + Amazon Nova Lite AI normalization for 80-90% success rates
+- **🤖 Hybrid Data Extraction**: BeautifulSoup HTML parsing + Amazon Nova 2 Lite AI normalization for 80-90% success rates
 - **🧠 Smart Status Logic**: Analyzes `target_retirement_date` and other date fields to categorize lifecycle stages
 - **🎛️ Service Configuration**: JSON-driven service definitions in `scripts/service_configs.json`
 - **📊 Real-time Dashboard**: Live status breakdown showing actionable categorization of deprecation urgency
@@ -88,6 +98,9 @@ Simplified Flow:
   - Check your version: `aws --version`
   - AgentCore support was added in AWS CLI v2.31.13 (January 2025)
 - **Node.js 22+** installed
+- **AWS CDK** installed globally ([Installation Guide](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html))
+  - Install: `npm install -g aws-cdk`
+  - Check your version: `cdk --version`
 - **Python 3.8+** installed (for configuration scripts)
 - **AWS credentials** configured with permissions for CloudFormation, Lambda, S3, ECR, CodeBuild, DynamoDB, Cognito, and IAM via:
   - `aws configure` (access key/secret key)
@@ -189,6 +202,8 @@ project-root/
 │   ├── data_extractor.py           # Low-level HTML parsing + AI extraction engine
 │   ├── database_reads.py           # READ operations (metrics, service configs)
 │   ├── database_writes.py          # WRITE operations + intelligent status categorization
+│   ├── action_plans.py             # Plan of Action CRUD operations
+│   ├── account_discovery.py        # AWS account resource discovery
 │   ├── requirements.txt            # Python dependencies (boto3, beautifulsoup4, requests)
 │   ├── Dockerfile                  # ARM64 container definition
 │   └── test_*.py                   # Testing and debugging scripts
@@ -208,8 +223,9 @@ project-root/
 │   │   ├── pages/
 │   │   │   ├── Dashboard.tsx       # Status breakdown dashboard (75/19/2 display)
 │   │   │   ├── Services.tsx        # Service configuration management
-│   │   │   ├── Deprecations.tsx    # Deprecation data viewer with filters
-│   │   │   └── Timeline.tsx        # Timeline view of upcoming deprecations
+│   │   │   ├── Deprecations.tsx    # Deprecation data viewer with filters + bulk selection
+│   │   │   ├── Timeline.tsx        # Timeline view of upcoming deprecations
+│   │   │   └── PlanOfAction.tsx    # Remediation tracking with ownership assignment
 │   │   ├── App.tsx                 # Main app with navigation and auth
 │   │   ├── AuthModal.tsx           # Cognito login/signup modal
 │   │   ├── auth.ts                 # Cognito User Pool authentication
@@ -413,7 +429,7 @@ The agent is organized into modular components with clear separation of concerns
 **`data_extractor.py`** - Low-level hybrid extraction engine
 - `DataExtractor` class with hybrid HTML + AI approach
 - `_fetch_html_tables()` - BeautifulSoup HTML parsing for structured data
-- `_llm_extract_deprecation_data()` - Amazon Nova Lite AI normalization
+- `_llm_extract_deprecation_data()` - Amazon Nova 2 Lite AI normalization
 - `_build_extraction_prompt()` - Service-specific AI prompt generation
 - **Role**: Pure data extraction mechanics
 
@@ -517,7 +533,7 @@ The `deploy-all.ps1` script orchestrates the complete deployment:
 3. AgentCore queries DynamoDB for enabled service configurations
 4. AgentCore processes all enabled services with refresh_origin: "Auto"
 5. AgentCore executes agent in isolated container (microVM)
-6. Agent fetches AWS documentation and extracts deprecation data using Amazon Nova Lite
+6. Agent fetches AWS documentation and extracts deprecation data using Amazon Nova 2 Lite
 7. Agent stores structured data in DynamoDB lifecycle table
 8. Orchestrator collects results and sends SNS notification with summary
 
@@ -701,7 +717,7 @@ Comprehensive UI for manual operations and monitoring:
 
 ### 2. Agent (`agent/main.py`)
 - AgentCore entry point with request routing
-- Uses Amazon Nova Lite for AI normalization
+- Uses Amazon Nova 2 Lite for AI normalization
 - Hybrid extraction: BeautifulSoup + LLM
 - Direct DynamoDB integration for data storage
 
@@ -1303,7 +1319,7 @@ Approximate monthly costs for AWS Services Lifecycle Tracker:
   - With daily scheduled extractions: ~$3-5/month (active only during extraction)
   - With hourly scheduled extractions: ~$72/month (24/7 active)
 - **Bedrock Model Usage**: Pay-per-token
-  - Amazon Nova Lite: ~$0.00006 per 1K input tokens, ~$0.00024 per 1K output tokens
+  - Amazon Nova 2 Lite (Global Cross-region Inference): $0.30 per 1M input tokens, $2.50 per 1M output tokens (Standard tier)
   - Typical usage: $2-5/month depending on extraction frequency and service count
 - **DynamoDB**: On-demand pricing
   - Write requests: $1.25 per million write request units
@@ -1392,6 +1408,126 @@ The admin interface is built with [AWS Cloudscape Design System](https://cloudsc
 - **JIRA integration** to automatically create migration tickets
 - **Cost analysis** integration with AWS Cost Explorer
 - **Custom dashboards** with service-specific deprecation views
+
+## Plan of Action - From Awareness to Remediation
+
+The Plan of Action feature transforms passive deprecation awareness into actionable team workflows. Instead of just knowing what's deprecated, teams can now assign ownership, set priorities, and track remediation progress.
+
+### Why Plan of Action?
+
+Discovering deprecations is only half the battle. The real challenge is:
+- **Who** is responsible for fixing each deprecation?
+- **When** should it be completed?
+- **What's the priority** compared to other work?
+- **What's the status** of ongoing remediation efforts?
+
+Plan of Action bridges the gap between awareness and action.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Ownership Assignment** | Assign deprecations to team members by email/alias |
+| **Priority Levels** | Low, Medium, High, Critical - prioritize what matters most |
+| **Status Tracking** | Not Started, In Progress, Completed, Blocked |
+| **Target Dates** | Set deadlines for remediation completion |
+| **Notes** | Add migration plans, blockers, or context |
+| **Bulk Selection** | Select multiple deprecations from the Deprecations page and add them to Plan of Action in one action |
+
+### Two Ways to Create Action Plans
+
+**1. From Deprecations Page (Recommended)**
+- Navigate to **Deprecations** in the sidebar
+- Select one or more deprecations using the checkboxes
+- Click **"Add to Plan of Action (N)"** button
+- Fill in owner, priority, target date, and notes
+- All selected items are added with the same assignment
+
+**2. From Plan of Action Page**
+- Navigate to **Plan of Action** in the sidebar
+- Click **"Create Action Plan"**
+- Select a deprecation from the dropdown
+- Fill in assignment details
+
+### Workflow Example
+
+```
+1. Discovery Phase
+   └─ Run "Discover My Resources" to find deprecated resources in your account
+   
+2. Triage Phase
+   └─ Review Deprecations page, filter by status (deprecated, end_of_life)
+   └─ Select high-priority items (e.g., Lambda runtimes blocking soon)
+   
+3. Assignment Phase
+   └─ Click "Add to Plan of Action"
+   └─ Assign to team members: "john@company.com"
+   └─ Set priority: "High" for items blocking in < 3 months
+   └─ Set target date: 2 weeks before block date
+   
+4. Execution Phase
+   └─ Team members view their assignments in Plan of Action
+   └─ Update status as work progresses
+   └─ Add notes about migration approach or blockers
+   
+5. Completion Phase
+   └─ Mark items as "Completed" when remediation is done
+   └─ Delete action plans for resolved deprecations
+```
+
+### Data Model
+
+Action plans are stored in the `deprecation-action-plans` DynamoDB table:
+
+```json
+{
+  "plan_id": "uuid",
+  "service_name": "lambda",
+  "item_id": "runtimes#nodejs18.x",
+  "item_name": "Node.js 18",
+  "owner": "john@company.com",
+  "plan_status": "in_progress",
+  "priority": "high",
+  "target_date": "2025-12-01",
+  "notes": "Migrating to Node.js 20, testing in progress",
+  "created_at": "2025-10-30T10:00:00Z",
+  "updated_at": "2025-11-15T14:30:00Z"
+}
+```
+
+### Querying Action Plans
+
+```bash
+# Get all action plans
+aws dynamodb scan --table-name deprecation-action-plans
+
+# Get action plans by owner
+aws dynamodb query \
+  --table-name deprecation-action-plans \
+  --index-name owner-index \
+  --key-condition-expression "#owner = :owner" \
+  --expression-attribute-names '{"#owner":"owner"}' \
+  --expression-attribute-values '{":owner":{"S":"john@company.com"}}'
+
+# Get action plans by status
+aws dynamodb query \
+  --table-name deprecation-action-plans \
+  --index-name plan-status-index \
+  --key-condition-expression "plan_status = :status" \
+  --expression-attribute-values '{":status":{"S":"blocked"}}'
+```
+
+### Infrastructure
+
+The Plan of Action feature is fully integrated into the CDK deployment:
+
+- **Data Stack** (`cdk/lib/data-stack.ts`): Creates `deprecation-action-plans` table with GSIs for owner and status queries
+- **Infra Stack** (`cdk/lib/infra-stack.ts`): Grants agent IAM permissions to read/write action plans
+- **Agent** (`agent/action_plans.py`): CRUD operations for action plans
+- **Frontend** (`frontend/src/pages/PlanOfAction.tsx`): UI for managing action plans
+- **Frontend** (`frontend/src/pages/Deprecations.tsx`): Bulk selection and "Add to Plan of Action" button
+
+No manual setup required - everything is created automatically during stack deployment.
 
 ## Resources
 
